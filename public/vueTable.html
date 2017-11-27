@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://cdn.jsdelivr.net/lodash/4.17.4/lodash.core.min.js"></script>
+
+<style>
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    table , tr, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+
+    }
+
+    tr:hover{background-color:#f5f5f5}
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #333333;
+        text-align: center;
+    }
+
+    li {
+        float: left;
+        position:relative;
+        left:45%;
+    }
+
+    li a {
+        display: block;
+        color: white;
+        text-align: center;
+        padding: 16px;
+        text-decoration: none;
+    }
+
+    li a:hover {
+        background-color: #111111;
+    }
+    #app{
+        color: white;
+    }
+</style>
+</head>
+<body @onload="getRequest1()">
+<hr>
+    <div id="demoList">
+        <div class="containerTable">
+            <h1>Restaurants</h1>
+            <table class="table">
+                <thead>
+                    <tr class="header">
+                        <th>
+                            <div>
+                                <a>Nom Du Restaurant</a>
+                            </div>
+                        </th>
+                        <th>
+                            <div>
+                                <a>Cuisine</a>
+                            </div>
+                        </th>
+						<th>
+                            <div>
+                                <a>Action</a>
+                            </div>
+                        </th>
+						<th>
+                            
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(item, index) in items">
+                        <td><label><input type='text'   v-model='item.name' /><label></td>
+						<td><label><input type='text'   v-model='item.cuisine' /><label></td>
+						<td><button id='item._id' v-on:click="supprimerRestaurant(item._id);">Supprimer</button></td>
+						<td><button  v-on:click="putRequest(index);">Modifier</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <ul>
+            <li>
+                <a href="#" v-on:click="setPage1(currentPage)">
+                Prec
+                </a>
+            </li>
+            <li v-for="pageNumber in totalPages">
+                <a href="#" v-on:click="setPage()">{{ pageNumber+1 }}</a>
+            </li>
+            <li>
+                <a href="#" v-on:click="setPage2()">
+                    Next
+                </a>
+            </li>
+        </ul>
+		<fieldset>
+					<legend>Ajout d'un restaurant</legend>
+					<label>
+						Nom: <input type="text" v-model='nameInput'>
+					</label>
+					<p></p>
+					<label>
+						Cuisine: <input type="text"  v-model='cuisineInput'>
+					</label>
+					<p></p>
+					<button  v-on:click="postRequest();">Ajouter ce restaurant</button>
+				</fieldset>
+    </div>
+    <hr>
+
+			
+				
+			
+	
+    <script>
+        var demoList = new Vue({
+            el: '#demoList',
+            data:{
+                items:[],
+				nameInput: '',
+				cuisineInput: '',
+				userInput: 'abcd',
+				userInput2: '',
+                loading:false,
+				page:1,
+                order:1,
+                searchText:null,
+                ccn:null,
+                currentPage:0,
+                itemsPerPage:10,
+                resultCount:0
+            },
+            computed:{
+                totalPages: function(){
+                    return Math.ceil(this.resultCount / this.itemsPerPage);
+                }
+            },
+			mounted() { 
+				 console.log("--- MOUNTED ---");
+				 this.getDataFromServer();
+			  },
+            methods:{
+                setPage:function(pageNumber){
+                    this.currentPage = pageNumber;
+                },
+                setPage1:function(){
+                    if(this.page != 0)
+                    this.page = this.page -1;
+					this.getDataFromServer();
+                },
+                setPage2:function(){
+                    this.page = this.page +1;
+					this.getDataFromServer();
+                },
+				getDataFromServer: function() {
+				  console.log("--- GETTING DATA ---");
+				   fetch('/api/restaurants?page='+this.page)
+				   .then(response => {
+				   console.log(response);
+					 return response.json();
+				   })
+				   .then(data => {
+					 console.log(data.data);
+					 this.items = data.data;
+				   }).catch(err => {
+					 console.log("erreur dans le get : " + err)
+				   });
+
+				},
+				envoieRequeteFetchDelete: function(id) {
+					let url = "/api/restaurants/" + id;
+
+					fetch(url, {
+						method: "DELETE",
+					})
+					.then(responseJSON =>{
+						responseJSON.json()
+						})
+						.catch(function (err) {
+							console.log(err);
+					});
+				},
+				supprimerRestaurant: function(id) {
+					//var id = event.target.id;
+					console.log("on supprime le restaurant id=" + id);
+
+					this.envoieRequeteFetchDelete(id);
+
+					// On affiche le tableau Ã  jour
+					this.getDataFromServer();
+				},
+				putRequest: function(index) {
+					console.log(this.items[index]);
+					
+					let url = "/api/restaurants/" + this.items[index]._id;
+					let data = new FormData();
+					//this.nameInput = document.getElementById(id).value;
+					//console.log(this.nameInput);
+					//this.cuisineInput = document.getElementByName(id);
+					data.append('nom',  this.items[index].name);
+					data.append('cuisine',  this.items[index].cuisine);
+					
+					
+					fetch(url, {
+						method: "PUT",
+						body: data
+					})
+					.then(responseJSON =>{
+						responseJSON.json()
+						})
+						.catch(function (err) {
+							console.log(err);
+					});
+				},
+				postRequest: function() {
+					
+					let data = new FormData();
+					
+					data.append('nom',  this.nameInput);
+					data.append('cuisine',this.cuisineInput);
+					let url = "/api/restaurants";
+					console.log(data);
+					fetch(url, {
+						method: "POST",
+						body: data
+					})
+					.then(responseJSON =>{
+						responseJSON.json()
+						//console.log(body);
+						})
+						.catch(function (err) {
+							console.log(err);
+					});
+				}
+				
+            },
+            filters:{
+                paginate:function(){
+                    this.resultCount = this.items.length;
+                    if(this.currentPage >= this.totalPages){
+                        this.currentPage = Math.max(0,this.totalPages - 1)
+                    }
+                    var index = this.currentPage * this.itemsPerPage;
+                    return this.items.slice(index,index + this.itemsPerPage);
+                }
+            }
+        });
+		
+    </script>
+
+</body>
+</html>
